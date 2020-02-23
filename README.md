@@ -2,6 +2,7 @@
 Client API for accessing mongodb
 
 mongo-clt-go-api is a golang implementation for accessing mongodb.
+This api is a simplified wrapper around "go.mongodb.org/mongo-driver" packages.
 
 ## Installation
 Install mongo-clt-go-api with go tool:
@@ -10,7 +11,7 @@ Install mongo-clt-go-api with go tool:
 ```
 
 ## Usage
-To use mongo-clt-go-api, you need import the package and create a new client
+To use mongo-clt-go-api, import the package and create a new client
 with options. This client uses SCRAM authentication with mongodb.
 ```go
 import "github.com/bluelemar/mongo-clt-go-api"
@@ -25,6 +26,20 @@ clt, err := mongoclt.NewClient(
 	mongoclt.ClientCommTimeout(50 * time.Millisecond)
 )
 ```
+
+The **mongoclt** api will use a field called "key" by default when creating the user entries.
+The **key** field is used for doing reads of data entries as well.
+The user may change the name of the the key field from the default **key** with the following:
+```
+func SetKeyFieldName(keyName string)
+```
+
+The **mongoclt** api allows normalization of errors returned to the calling application.
+The errors to be translated are those returned by mongodb. The normalized errors can be set by:
+```
+func SetErrorMap(mongoErrStr, normalizedErrStr string)
+```
+
 
 ## Run Test
 Run mongodb and initialize with your users and database.

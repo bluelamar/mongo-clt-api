@@ -61,8 +61,8 @@ func SetKeyFieldName(keyName string) {
 
 // SetErrorMap allows user to create normalized errors for their apps to handle without exposing
 // underlying mongodb specific errors
-func SetErrorMap(errorStr, normalizedStr string) {
-	nerrorMap[errorStr] = normalizedStr
+func SetErrorMap(mongoErrStr, normalizedErrStr string) {
+	nerrorMap[mongoErrStr] = normalizedErrStr
 }
 
 type Client struct {
@@ -178,8 +178,8 @@ func NewClient(coptions ...ClientOption) (*Client, error) {
 // Create or insert a new entry into the collection entity
 func (clt *Client) Create(entity, keyValue string, valueEntry map[string]interface{}) (*map[string]interface{}, error) {
 	//FIX valMap := val.(map[string]interface{})
-	if _, ok := valueEntry[keyField]; !ok {
-		valueEntry[keyField] = keyValue
+	if _, ok := valueEntry[keyFieldName]; !ok {
+		valueEntry[keyFieldName] = keyValue
 	}
 
 	coll := clt.client.Database(clt.opts.dbName).Collection(entity)
@@ -190,7 +190,7 @@ func (clt *Client) Create(entity, keyValue string, valueEntry map[string]interfa
 
 	result := make(map[string]interface{})
 	result["_id"] = res.InsertedID
-	result[keyField] = keyValue
+	result[keyFieldName] = keyValue
 
 	return &result, nil
 }
@@ -203,8 +203,8 @@ func (clt *Client) Read(entity, keyValue string) (*map[string]interface{}, error
 		return nil, errors.New(errMsg)
 	}
 
-	opts := options.FindOne().SetSort(bson.D{{"_id", 1}})
-	sr := coll.FindOne(context.Background(), bson.D{{keyField, keyValue}}, opts)
+	opts := options.FindOne().SetSort(bson.D{{keyFieldName, 1}}) // sort on key values
+	sr := coll.FindOne(context.Background(), bson.D{{keyFieldName, keyValue}}, opts)
 	if sr == nil {
 		errMsg := nerrorMap[errNoFindKeyKey] + keyValue
 		return nil, errors.New(errMsg)
