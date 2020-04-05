@@ -1,16 +1,17 @@
-/*   Copyright 2020 Mark Lakes
+/*
+ * Copyright 2020 Mark Lakes
  *
- *   Licensed under the Apache License, Version 2.0 (the "License");
- *   you may not use this file except in compliance with the License.
- *   You may obtain a copy of the License at
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
- *   Unless required by applicable law or agreed to in writing, software
- *   distributed under the License is distributed on an "AS IS" BASIS,
- *   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *   See the License for the specific language governing permissions and
- *   limitations under the License.
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
  */
 package mongoclt
 
@@ -19,7 +20,7 @@ import (
 	"errors"
 	"strings"
 	"time"
-	
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -30,29 +31,27 @@ const (
 	keyField = "key" // default of expected key field for each entry called "key"
 
 	// error keys in the error map : user may change their values with SetErrorMap()
-	errNoDocsKey = "no documents in result"
-	errNoDocsVal = "not found"
+	errNoDocsKey    = "no documents in result"
+	errNoDocsVal    = "not found"
 	errNoFindEntKey = "failed to find entity="
 	errNoFindKeyKey = "failed to find key="
-	errNoMatch = "no match found for entity="
-	errNoDelKey = "failed to delete entity="
-	errMissKeyKey = "missing key field"
+	errNoMatch      = "no match found for entity="
+	errNoDelKey     = "failed to delete entity="
+	errMissKeyKey   = "missing key field"
 )
 
 var keyFieldName string = keyField
 
-
 // key = partial mongo error string
 // value = normalized string
 var nerrorMap map[string]string = map[string]string{
-	errNoDocsKey:errNoDocsVal,
-	errNoFindEntKey:errNoFindEntKey,
-	errNoFindKeyKey:errNoFindKeyKey,
-	errMissKeyKey:errMissKeyKey,
-	errNoMatch:errNoMatch,
-	errNoDelKey:errNoDelKey,
+	errNoDocsKey:    errNoDocsVal,
+	errNoFindEntKey: errNoFindEntKey,
+	errNoFindKeyKey: errNoFindKeyKey,
+	errMissKeyKey:   errMissKeyKey,
+	errNoMatch:      errNoMatch,
+	errNoDelKey:     errNoDelKey,
 }
-
 
 // SetKeyFieldName allows user to over-ride the default name of the "key" field
 func SetKeyFieldName(keyName string) {
@@ -65,9 +64,10 @@ func SetErrorMap(mongoErrStr, normalizedErrStr string) {
 	nerrorMap[mongoErrStr] = normalizedErrStr
 }
 
+// Client used for the mongo client api
 type Client struct {
 	client *mongo.Client
-	opts *cltOptions
+	opts   *cltOptions
 }
 
 // ClientOption specifies an option for connecting to a mongodb server
@@ -76,15 +76,15 @@ type ClientOption struct {
 }
 
 type cltOptions struct {
-	hostPorts string // "host:port" or "host:port,host2:port2..."
-	dbUser string   // user to connect to database
-	dbPasswd string // password for db user
-	dbAuthDB string // name of auth database to auth the connection if needed
-	dbName string   // name of database to connect to
-	commTimeoutMS time.Duration  // millisecs
+	hostPorts     string        // "host:port" or "host:port,host2:port2..."
+	dbUser        string        // user to connect to database
+	dbPasswd      string        // password for db user
+	dbAuthDB      string        // name of auth database to auth the connection if needed
+	dbName        string        // name of database to connect to
+	commTimeoutMS time.Duration // millisecs
 }
 
-// ClientHostPorts specifies the host and port inwhich to access the database
+// ClientHostPort specifies the host and port inwhich to access the database
 // ex: "127.0.0.1:27017"
 // Supports sharded db - can call multiple times host+ports
 func ClientHostPort(hostPort string) ClientOption {
@@ -111,7 +111,7 @@ func ClientDbPasswd(passwd string) ClientOption {
 	}}
 }
 
-// ClientDbAuthDbName specifies the name of auth database containing the user when connecting to the server
+// ClientAuthDbName specifies the name of auth database containing the user when connecting to the server
 // Optional: This was required on Ubuntu but not on MAC
 func ClientAuthDbName(name string) ClientOption {
 	return ClientOption{func(co *cltOptions) {
@@ -133,7 +133,7 @@ func ClientCommTimeout(timeOut int) ClientOption {
 	}}
 }
 
-
+// NewClient creates a new mongo client using the specified options
 func NewClient(coptions ...ClientOption) (*Client, error) {
 	opts := cltOptions{}
 	for _, option := range coptions {
@@ -160,7 +160,7 @@ func NewClient(coptions ...ClientOption) (*Client, error) {
 		return nil, normalizeError(err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), (connTimeOutMS / 1000) * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), (connTimeOutMS/1000)*time.Second)
 	defer cancel()
 	err = clt.Connect(ctx)
 	if err != nil {
@@ -174,10 +174,9 @@ func NewClient(coptions ...ClientOption) (*Client, error) {
 	return &client, nil
 }
 
-//FIX func (clt *Client) Create(entity, key string, val interface{}) (*map[string]interface{}, error) {
 // Create or insert a new entry into the collection entity
 func (clt *Client) Create(entity, keyValue string, valueEntry map[string]interface{}) (*map[string]interface{}, error) {
-	//FIX valMap := val.(map[string]interface{})
+
 	if _, ok := valueEntry[keyFieldName]; !ok {
 		valueEntry[keyFieldName] = keyValue
 	}
@@ -195,6 +194,36 @@ func (clt *Client) Create(entity, keyValue string, valueEntry map[string]interfa
 	return &result, nil
 }
 
+// Update the entry with contents of valueEntry matching the specified id
+// If there is no id specified, it will try to use the key from the valueEntry, else _id field
+func (clt *Client) Update(entity, id string, valueEntry map[string]interface{}) error {
+
+	var filter bson.D
+	if id == "" {
+		if k, ok := valueEntry[keyFieldName].(string); ok {
+			filter = bson.D{{Key: keyFieldName, Value: k}}
+		} else if oid, ok := valueEntry["_id"].(primitive.ObjectID); ok {
+			filter = bson.D{{Key: "_id", Value: oid}}
+		} else {
+			return errors.New("missing key field")
+		}
+	} else {
+		filter = bson.D{{Key: keyFieldName, Value: id}}
+	}
+	update := bson.D{{Key: "$set", Value: valueEntry}}
+	coll := clt.client.Database(clt.opts.dbName).Collection(entity)
+	opts := options.Update().SetUpsert(false)
+	result, err := coll.UpdateOne(context.Background(), filter, update, opts)
+	if err != nil {
+		return normalizeError(err)
+	}
+	if result.MatchedCount == 0 {
+		return errors.New("no match found for entity=" + entity + " id=" + id)
+	}
+	return nil
+}
+
+// Read the entry for specified entity and key
 func (clt *Client) Read(entity, keyValue string) (*map[string]interface{}, error) {
 
 	coll := clt.client.Database(clt.opts.dbName).Collection(entity)
@@ -203,8 +232,8 @@ func (clt *Client) Read(entity, keyValue string) (*map[string]interface{}, error
 		return nil, errors.New(errMsg)
 	}
 
-	opts := options.FindOne().SetSort(bson.D{{keyFieldName, 1}}) // sort on key values
-	sr := coll.FindOne(context.Background(), bson.D{{keyFieldName, keyValue}}, opts)
+	opts := options.FindOne().SetSort(bson.D{{Key: keyFieldName, Value: 1}}) // sort on key values
+	sr := coll.FindOne(context.Background(), bson.D{{Key: keyFieldName, Value: keyValue}}, opts)
 	if sr == nil {
 		errMsg := nerrorMap[errNoFindKeyKey] + keyValue
 		return nil, errors.New(errMsg)
@@ -224,6 +253,70 @@ func (clt *Client) Read(entity, keyValue string) (*map[string]interface{}, error
 	return &result, nil
 }
 
+// ReadAll entries into a slice of entries for the specified entity
+func (clt *Client) ReadAll(entity string) ([]interface{}, error) {
+	return clt.Find(entity, "", "")
+}
+
+// Find entry for specified entity where value matches the value in the field
+// If field and value are empty, then return all entries for the specified entity
+func (clt *Client) Find(entity, field, value string) ([]interface{}, error) {
+
+	coll := clt.client.Database(clt.opts.dbName).Collection(entity)
+
+	var err error
+	var cursor *mongo.Cursor
+	if field == "" {
+		cursor, err = coll.Find(context.Background(), bson.M{})
+	} else {
+		cursor, err = coll.Find(context.Background(), bson.D{{Key: field, Value: value}})
+	}
+	if err != nil {
+		return nil, normalizeError(err)
+	}
+	defer cursor.Close(context.Background())
+
+	var results []bson.M
+	if err = cursor.All(context.Background(), &results); err != nil {
+		return nil, normalizeError(err)
+	}
+
+	docs := make([]interface{}, 0)
+	for _, result := range results {
+		res := make(map[string]interface{})
+		// must replace fields that are primitive.A with []interface{}
+		respm := (primitive.M)(result)
+		for key, value := range respm {
+			v := convertToNative(value)
+			res[key] = v
+		}
+		docs = append(docs, res)
+	}
+
+	return docs, nil
+}
+
+// Delete the specified entry
+func (clt *Client) Delete(entity, id string) error {
+
+	// FIX TODO what should the Locale be?
+	opts := options.Delete().SetCollation(&options.Collation{
+		Locale:    "en_US",
+		Strength:  1,
+		CaseLevel: false,
+	})
+
+	coll := clt.client.Database(clt.opts.dbName).Collection(entity)
+	res, err := coll.DeleteOne(context.Background(), bson.D{{Key: "key", Value: id}}, opts)
+	if err != nil {
+		return err
+	}
+
+	if res.DeletedCount == 1 {
+		return nil
+	}
+	return errors.New("failed to delete entity=" + entity + " id=" + id)
+}
 
 func convertToNative(value interface{}) interface{} {
 
@@ -257,7 +350,6 @@ func convertToNative(value interface{}) interface{} {
 	return value
 }
 
-
 func normalizeError(err error) error {
 	if err == nil {
 		return nil
@@ -265,7 +357,7 @@ func normalizeError(err error) error {
 
 	for key, val := range nerrorMap {
 		//if strings.Contains(err.Error(), "no documents in result") {
-			//return errors.New("not_found")
+		//return errors.New("not_found")
 		//}
 		if strings.Contains(err.Error(), key) {
 			return errors.New(val)
@@ -274,4 +366,3 @@ func normalizeError(err error) error {
 
 	return err
 }
-
